@@ -77,24 +77,24 @@ qsort:  addi $sp, $sp, -4      # Space for $ra
 qsortH: addi $sp, $sp, -20     # Space for $ra and $s0 index
         sw $ra, 16($sp)        # Store return address
         sw $s0, 12($sp)        # Caller agreement store $s0 = index
-        sw $a0, 8($sp)         # Store $a0 base arr adress
+        sw $a0, 8($sp)         # Store $a0 base arr address
         sw $a1, 4($sp)         # Store $a1 left
         sw $a2, 0($sp)         # Store $a2 right
 #--------------------------------
         jal parter             # Call partition( arr, left, right)
+        lw $a0, 8($sp)         # Restore $a0 base arr address
+        lw $a1, 4($sp)         # Restore $a1 left
+        lw $a2, 0($sp)         # Restore $a2 right
         add $s0, $zero, $v0    # $s0n index = partition( arr, left, right);
-        lw $a1, 4($sp)         # $a1 = left and Setup arg 1 for qsortH call
         addi $t1, $s0, -1      # $t1 = index - 1
         slt $t0, $a1, $t1      # $t0 = ( left < index - 1 ) ? 1 : 0
         beq $t0, $zero, not1   # !( left < index - 1 ) => notl
-        lw $a0, 8($sp)         # Setup arg 0 for qsortH call
         add $a2, $zero, $t1    # Setup arg 2 for qsortH call
-        j qsret                # Prep to return
-not1:   lw $a2, 0($sp)         # $a2 = right and Setup arg 2 for qsortH
-        slt $t0, $s0, $a2      # $t0 = ( index < right ) ? 1 : 0
+        jal qsortH             # Recurse qsortH(arr, left, index -1)
+not1:   slt $t0, $s0, $a2      # $t0 = ( index < right ) ? 1 : 0
         beq $t0, $zero, not2   # !( index < right ) => not2
         add $a1, $zero, $s0    # Setup arg 1 for qsortH call
-qsret:  jal qsortH             # Recurse 
+        jal qsortH             # Recurse qsortH(arr, index, right)
 #--------------------------------
 not2:   lw $ra, 16($sp)        # Restore return address
         lw $s0, 12($sp)        # Restore $s0
@@ -115,7 +115,7 @@ parter: addi $sp, $sp, -20     # Space for $ra, i, j, tmp, and pivot
         add $s1, $zero, $a2    # $s1 = j = right
         add $t0, $a1, $a2      # $t0 = left + right
         srl $t0, $t0, 1        # $t0 = ( left + right ) / 2
-        sll $t0, $t0, 2        # $t0 = (( left + right ) / 2) * 4
+        sll $t0, $t0, 2        # $t0 = (( left + right ) / 2) * 4                                                           
         add $t0, $a0, $t0      # $t0 = arr + ( ( left + right ) / 2 )
         lw $s2, 0($t0)         # $s2 = pivot = arr[ ( left + right ) / 2 ]
 pLoop:  slt $t0, $s1, $s0      # $t0 = ( j < i ) ? 1 : 0
@@ -129,10 +129,10 @@ pL1:    sll $t0, $s0, 2        # $t0 = i * 4
         j pL1                  # Restart loop
 pL2:    sll $t0, $s1, 2        # $t0 = j * 4
         add $t0, $a0, $t0      # $t0 = arr + j * 4
-        lw $t0, 0($t0)         # $t0 = arr[j]
+        lw $t0, 0($t0)         # $t0 = arr[j]                                     ?????????
         slt $t0, $s2, $t0      # $t0 = (pivot < arr[j]) ? 1 : 0
         beq $t0, $zero, pLE    # !(pivot < arr[j]) => pLE
-        addi $s1, $s1, 1       # $s1 = j = j + 1
+        addi $s1, $s1, -1       # $s1 = j = j - 1
         j pL2                  # Restart loop
 pLE:    slt $t0, $s1, $s0      # $t0 = ( j < i ) ? 1 : 0
         bne $t0, $zero, pEnd   # !( j < i ) -> pEnd
